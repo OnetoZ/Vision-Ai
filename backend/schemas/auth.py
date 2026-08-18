@@ -16,6 +16,9 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+class GoogleLoginRequest(BaseModel):
+    credential: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -32,6 +35,8 @@ class UserResponse(BaseModel):
     website_url: str | None = None
     industry: str | None = None
     target_audience: str | None = None
+    is_admin: bool = False
+    is_approved: bool = False
 
     class Config:
         from_attributes = True

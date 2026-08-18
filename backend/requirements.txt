@@ -12,3 +12,14 @@ beautifulsoup4==4.12.3
 lxml==5.3.0
 google-generativeai==0.8.4
 python-multipart==0.0.20
+google-auth
+requests
+playwright
+trafilatura
+langchain
+llama-index
+qdrant-client
+celery
+redis
+tiktoken
+firecrawl-py

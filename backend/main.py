@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from database import init_db
-from routers import auth, competitors, crawls, seo, content, pricing, insights
+from routers import auth, competitors, crawls, seo, content, pricing, insights, admin
 
 settings = get_settings()
 
@@ -31,6 +31,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 app.include_router(competitors.router, prefix="/api")
 app.include_router(crawls.router, prefix="/api")
 app.include_router(seo.router, prefix="/api")
