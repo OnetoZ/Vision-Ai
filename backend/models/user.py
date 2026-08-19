@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, Boolean
 from database import Base
 
 
@@ -16,4 +16,6 @@ class User(Base):
     website_url = Column(String, nullable=True)
     industry = Column(String, nullable=True)
     target_audience = Column(String, nullable=True)
+    is_admin = Column(Boolean, default=False)
+    is_approved = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

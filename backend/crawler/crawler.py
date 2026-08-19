@@ -11,10 +11,10 @@ from bs4 import BeautifulSoup
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_settings
-from crawler.fetcher import Fetcher
-from crawler.robots_parser import RobotsParser
-from crawler.sitemap_parser import SitemapParser
-from crawler.url_utils import (
+from .fetcher import Fetcher
+from .robots_parser import RobotsParser
+from .sitemap_parser import SitemapParser
+from .url_utils import (
     format_url, is_same_domain, is_crawlable_url,
     normalize_url, resolve_url, is_valid_url,
 )
@@ -104,31 +104,22 @@ async def run_crawl(competitor_id: str, crawl_run_id: str, db_factory) -> None:
 
                     # Fetch the page
                     start_time = time.monotonic()
-                    response = await fetcher.fetch(url, client)
+                    html, content_type, status_code = await fetcher.fetch_with_firecrawl(url)
                     elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
-                    if response is None:
+                    if not html:
                         crawl_run.pages_failed += 1
                         await db.commit()
                         continue
 
-                    content_type = response.headers.get("content-type", "")
-                    if "text/html" not in content_type and "application/xhtml" not in content_type:
-                        continue
-
-                    html = response.text
-                    page_size = len(response.content)
-
-                    # Build redirect chain
+                    page_size = len(html.encode('utf-8'))
                     redirect_chain = []
-                    if response.history:
-                        redirect_chain = [str(r.url) for r in response.history]
 
                     # Extract SEO data
                     soup = BeautifulSoup(html, "lxml")
                     seo_data = extract_seo_data(soup, url, base_url)
                     schema_data = extract_schema_data(soup)
-                    content_data = extract_content_data(soup)
+                    content_data = extract_content_data(soup, html=html)
                     product_data = extract_product_data(soup, html)
                     pricing_data_page = extract_pricing_data(html)
 
@@ -148,8 +139,8 @@ async def run_crawl(competitor_id: str, crawl_run_id: str, db_factory) -> None:
                         crawl_run_id=crawl_run_id,
                         competitor_id=competitor_id,
                         url=url,
-                        status_code=response.status_code,
-                        final_url=str(response.url),
+                        status_code=status_code,
+                        final_url=url,
                         redirect_chain=json.dumps(redirect_chain) if redirect_chain else None,
                         response_time_ms=elapsed_ms,
                         page_size_bytes=page_size,
@@ -209,17 +200,87 @@ async def run_crawl(competitor_id: str, crawl_run_id: str, db_factory) -> None:
                         "content": content_data,
                         "products": product_data,
                         "pricing": pricing_data_page,
-                        "status_code": response.status_code,
+                        "status_code": status_code,
                     })
 
                     crawl_run.pages_discovered = len(visited)
                     crawl_run.pages_analyzed = len(pages_data)
                     await db.commit()
 
-            # Phase 5: Analyze — generate SEO findings and scores
+            # Phase 5: Analyze — Deep Intelligence Extraction
             crawl_run.status = "analyzing"
             await db.commit()
 
+            # Aggregate text from all crawled pages to feed into Gemini intelligence
+            full_html = ""
+            for p in pages_data:
+                full_html += f"Page URL: {p['url']}\n{p.get('content', {}).get('main_text', '')}\n\n"
+
+            # 1. Core Company Intelligence
+            from extractors.intelligence_extractor import extract_company_intelligence
+            intel = extract_company_intelligence(full_html, homepage)
+
+            if intel:
+                profile = CompanyProfile(
+                    competitor_id=competitor_id,
+                    crawl_run_id=crawl_run_id,
+                    brand_name=intel.get("brand_name"),
+                    legal_name=intel.get("legal_name"),
+                    website_domain=intel.get("website_domain") or homepage,
+                    industry=intel.get("industry"),
+                    business_type=intel.get("business_type"),
+                    country=intel.get("country"),
+                    primary_market=intel.get("primary_market"),
+                    description=intel.get("description"),
+                    tagline=intel.get("tagline"),
+                    value_proposition=intel.get("value_proposition"),
+                    business_model=intel.get("business_model"),
+                    target_customers=intel.get("target_customers", []),
+                    target_industries=intel.get("target_industries", []),
+                    primary_problems_solved=intel.get("primary_problems_solved", []),
+                    business_categories=intel.get("business_categories", []),
+                    source_url=homepage
+                )
+                db.add(profile)
+
+                from models.product import Product
+                for prod in intel.get("products", []):
+                    db.add(Product(
+                        competitor_id=competitor_id,
+                        crawl_run_id=crawl_run_id,
+                        name=prod.get("name", "Unknown"),
+                        category=prod.get("category"),
+                        description=prod.get("description"),
+                        features=json.dumps(prod.get("features", [])),
+                        benefits=json.dumps(prod.get("benefits", [])),
+                        source_url=homepage
+                    ))
+
+                from models.service import Service
+                for srv in intel.get("services", []):
+                    db.add(Service(
+                        competitor_id=competitor_id,
+                        crawl_run_id=crawl_run_id,
+                        name=srv.get("name", "Unknown"),
+                        description=srv.get("description"),
+                        target_customer=srv.get("target_customer"),
+                        features=json.dumps(srv.get("features", [])),
+                        source_url=homepage
+                    ))
+
+                from models.solution import Solution
+                for sol in intel.get("solutions", []):
+                    db.add(Solution(
+                        competitor_id=competitor_id,
+                        crawl_run_id=crawl_run_id,
+                        name=sol.get("name", "Unknown"),
+                        problem_solved=sol.get("problem_solved"),
+                        target_industry=sol.get("target_industry"),
+                        features=json.dumps(sol.get("features", [])),
+                        source_url=homepage
+                    ))
+
+            # 2. Extract SEO findings and scores
             findings, scores = calculate_seo_scores(pages_data, competitor_id, crawl_run_id)
 
             for finding in findings:
@@ -256,14 +317,34 @@ async def run_crawl(competitor_id: str, crawl_run_id: str, db_factory) -> None:
             )
             db.add(score)
 
-            # Store aggregated pricing snapshot
+            # 3. Store aggregated pricing snapshot AND granular plans
+            from models.pricing import PricingPlan
             all_prices = []
+            price_details_list = []
+            
             for p in pages_data:
                 for price_info in p.get("pricing", []):
                     try:
-                        val = float(price_info["amount"].replace("$", "").replace(",", "").replace("€", "").replace("£", "").split("/")[0])
-                        all_prices.append(val)
-                    except (ValueError, KeyError):
+                        val = float(price_info.get("price") or price_info.get("amount") or 0)
+                        if val > 0:
+                            all_prices.append(val)
+                            price_details_list.append(price_info)
+                            
+                            db.add(PricingPlan(
+                                competitor_id=competitor_id,
+                                crawl_run_id=crawl_run_id,
+                                plan_name=price_info.get("plan_name", "Unknown Plan"),
+                                price=val,
+                                currency=price_info.get("currency", "₹"),
+                                billing_period=price_info.get("billing_period"),
+                                features=json.dumps(price_info.get("features", [])),
+                                limits=json.dumps(price_info.get("limits", [])),
+                                target_customer=price_info.get("target_customer"),
+                                cta=price_info.get("cta"),
+                                pricing_type=price_info.get("pricing_type", "public"),
+                                source_url=p["url"]
+                            ))
+                    except (ValueError, KeyError, TypeError):
                         pass
 
             if all_prices:
@@ -275,7 +356,7 @@ async def run_crawl(competitor_id: str, crawl_run_id: str, db_factory) -> None:
                     max_price=max(all_prices),
                     avg_price=sum(all_prices) / len(all_prices),
                     product_count=len(all_prices),
-                    price_details=json.dumps([{"amount": p} for p in all_prices[:50]]),
+                    price_details=json.dumps(price_details_list[:50]),
                 )
                 db.add(pricing_snap)
 

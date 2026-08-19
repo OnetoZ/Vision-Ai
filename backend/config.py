@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     CRAWL_CONCURRENCY: int = 5
     CRAWL_DELAY_SECONDS: float = 1.0
     USER_AGENT: str = "VisionAI-Crawler/1.0 (+https://visionai.app/bot)"
+    VITE_GOOGLE_CLIENT_ID: str = ""
+    FIRECRAWL_API_KEY: str = ""
 
     class Config:
         env_file = ".env"
