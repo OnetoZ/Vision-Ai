@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from database import init_db
-from routers import auth, competitors, crawls, seo, content, pricing, insights, admin
+from routers import auth, competitors, crawls, seo, content, pricing, insights, admin, products, gap_finder, youtube, maintenance, reports
 
 settings = get_settings()
 
@@ -38,6 +38,11 @@ app.include_router(seo.router, prefix="/api")
 app.include_router(content.router, prefix="/api")
 app.include_router(pricing.router, prefix="/api")
 app.include_router(insights.router, prefix="/api")
+app.include_router(products.router, prefix="/api")
+app.include_router(gap_finder.router, prefix="/api")
+app.include_router(youtube.router, prefix="/api")
+app.include_router(maintenance.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")
 
 @app.get("/api/health")
 async def health_check():
