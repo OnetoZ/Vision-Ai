@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Dict, Any
+from datetime import datetime, timezone
 
 from database import get_db
 from models.user import User
@@ -103,6 +104,7 @@ async def get_seo_gaps(
     competitors = (await db.execute(stmt)).scalars().all()
 
     gaps = []
+    now = datetime.now(timezone.utc).isoformat()
     for comp in competitors:
         # Check competitor_gaps
         gap_stmt = select(CompetitorGap).where(CompetitorGap.competitor_id == comp.id)
@@ -117,9 +119,11 @@ async def get_seo_gaps(
                     "category": g.category,
                     "issue_type": g.issue_type,
                     "description": g.description,
+                    "issue_description": g.description,
                     "recommendation": g.recommendation,
                     "severity": g.severity,
-                    "impact_score": g.impact_score
+                    "impact_score": g.impact_score,
+                    "created_at": g.created_at.isoformat() if g.created_at else now,
                 })
         else:
             # Baseline strategic gaps
@@ -130,9 +134,11 @@ async def get_seo_gaps(
                 "category": "Technical",
                 "issue_type": "Missing Breadcrumb Schema",
                 "description": f"{comp.name} lacks structured breadcrumb navigation markups on their service pages.",
+                "issue_description": f"{comp.name} lacks structured breadcrumb navigation markups on their service pages.",
                 "recommendation": "Implement BreadcrumbList schema to capture rich search carousel snippets.",
                 "severity": "medium",
-                "impact_score": 65
+                "impact_score": 65,
+                "created_at": now,
             })
             gaps.append({
                 "id": f"gap-{comp.id}-2",
@@ -141,9 +147,11 @@ async def get_seo_gaps(
                 "category": "Content",
                 "issue_type": "Thin Content on Product FAQs",
                 "description": f"Frequently asked questions on {comp.name} are not indexed or marked with FAQPage schema.",
+                "issue_description": f"Frequently asked questions on {comp.name} are not indexed or marked with FAQPage schema.",
                 "recommendation": "Expand question/answer pairs and add FAQPage JSON-LD to dominate People Also Ask (PAA).",
                 "severity": "high",
-                "impact_score": 85
+                "impact_score": 85,
+                "created_at": now,
             })
 
     return {"gaps": gaps}

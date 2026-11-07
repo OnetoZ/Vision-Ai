@@ -1,3 +1,4 @@
+import React from 'react';
 import { AlertCircle, DollarSign, FileText, Package, TrendingUp, Clock, Target, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSEOGaps } from '@/hooks/useCompetitors';
@@ -40,35 +41,52 @@ const getTypeColor = (type: string) => {
   }
 };
 
+const formatTimeAgo = (dateStr?: string | null) => {
+  if (!dateStr) return 'Recently';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Recently';
+    return formatDistanceToNow(d, { addSuffix: true });
+  } catch {
+    return 'Recently';
+  }
+};
+
 const ActivityFeed = () => {
   const navigate = useNavigate();
   const { data: seoGaps, isLoading: gapsLoading } = useSEOGaps();
   const { insights, isLoading: insightsLoading } = useInsights();
 
+  const gapsList = Array.isArray(seoGaps) ? seoGaps : ((seoGaps as any)?.gaps || []);
+  const insightsList = Array.isArray(insights) ? insights : ((insights as any)?.insights || []);
+
   // Combine gaps and insights into a single activity feed
   const activities = [
-    ...(seoGaps || []).map(gap => ({
-      id: gap.id,
+    ...gapsList.map((gap: any) => ({
+      id: gap.id || Math.random().toString(),
       type: 'seo',
-      title: gap.issue_type,
-      description: gap.issue_description,
-      competitor: gap.competitor_scans?.competitors?.name || 'Competitor',
-      time: gap.created_at,
-      priority: gap.severity,
+      title: gap.issue_type || 'SEO Opportunity',
+      description: gap.issue_description || gap.description || 'New SEO recommendation identified',
+      competitor: gap.company || gap.competitor_scans?.competitors?.name || 'Competitor',
+      time: gap.created_at || new Date().toISOString(),
+      priority: gap.severity || 'medium',
       link: '/seo'
     })),
-    ...(insights || []).map(insight => ({
-      id: insight.id,
+    ...insightsList.map((insight: any) => ({
+      id: insight.id || Math.random().toString(),
       type: insight.insight_type === 'threat' ? 'alert' : 'product',
-      title: insight.title,
-      description: insight.description,
+      title: insight.title || 'Market Update',
+      description: insight.description || '',
       competitor: 'Vision AI',
-      time: insight.created_at,
-      priority: insight.priority,
+      time: insight.created_at || new Date().toISOString(),
+      priority: insight.priority || 'medium',
       link: '/insights'
     }))
-  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-    .slice(0, 10);
+  ].sort((a, b) => {
+    const timeA = a.time ? new Date(a.time).getTime() : 0;
+    const timeB = b.time ? new Date(b.time).getTime() : 0;
+    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+  }).slice(0, 10);
 
   const isLoading = gapsLoading || insightsLoading;
 
@@ -115,8 +133,8 @@ const ActivityFeed = () => {
                       <p className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors line-clamp-1">
                         {activity.title}
                       </p>
-                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight flex-shrink-0 mt-1">
-                        {formatDistanceToNow(new Date(activity.time), { addSuffix: true })}
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight shrink-0 mt-1">
+                        {formatTimeAgo(activity.time)}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-2">

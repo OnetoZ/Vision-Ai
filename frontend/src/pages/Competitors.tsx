@@ -15,6 +15,17 @@ import { useCompetitors } from '@/hooks/useCompetitors';
 import { formatDistanceToNow } from 'date-fns';
 import AddCompetitorModal from '@/components/competitors/AddCompetitorModal';
 
+const formatLastScanned = (timeStr?: string | null) => {
+  if (!timeStr) return 'Not scanned yet';
+  try {
+    const d = new Date(timeStr);
+    if (isNaN(d.getTime())) return 'Not scanned yet';
+    return formatDistanceToNow(d, { addSuffix: true });
+  } catch {
+    return 'Not scanned yet';
+  }
+};
+
 const Competitors = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -215,9 +226,7 @@ const Competitors = () => {
                 <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {competitor.last_scanned_at
-                      ? formatDistanceToNow(new Date(competitor.last_scanned_at), { addSuffix: true })
-                      : 'Not scanned yet'}
+                    {formatLastScanned(competitor.last_scanned_at)}
                   </div>
                   <div className="flex items-center gap-1">
                     <Activity className="w-3 h-3" />

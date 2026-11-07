@@ -31,7 +31,16 @@ const Dashboard = () => {
     ]);
   };
 
-  const lastScanTime = myCompany?.last_scanned_at ? new Date(myCompany.last_scanned_at) : null;
+  const formatLastScan = () => {
+    if (!myCompany?.last_scanned_at) return 'Scan Now';
+    try {
+      const d = new Date(myCompany.last_scanned_at);
+      if (isNaN(d.getTime())) return 'Scan Now';
+      return `Last scanned ${formatDistanceToNow(d, { addSuffix: true })}`;
+    } catch {
+      return 'Scan Now';
+    }
+  };
 
   return (
     <AppLayout>
@@ -109,7 +118,7 @@ const Dashboard = () => {
               className="gap-2"
             >
               <RefreshCw className="w-4 h-4" />
-              {lastScanTime ? `Last scanned ${formatDistanceToNow(lastScanTime, { addSuffix: true })}` : 'Scan Now'}
+              {formatLastScan()}
             </Button>
           </div>
         )}
