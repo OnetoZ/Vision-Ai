@@ -26,7 +26,9 @@ export const useInsights = () => {
       if (!user) return [];
       try {
         const response = await fetchApi('/insights');
-        return response.insights as Insight[];
+        if (Array.isArray(response)) return response as Insight[];
+        if (response && Array.isArray((response as any).insights)) return (response as any).insights as Insight[];
+        return [];
       } catch (err) {
         return [];
       }

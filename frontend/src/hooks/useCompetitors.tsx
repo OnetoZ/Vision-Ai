@@ -123,10 +123,12 @@ export const useSEOGaps = () => {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['seo-gaps', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<SEOGap[]> => {
       try {
         const data = await fetchApi('/seo/gaps');
-        return data as SEOGap[];
+        if (Array.isArray(data)) return data as SEOGap[];
+        if (data && Array.isArray((data as any).gaps)) return (data as any).gaps as SEOGap[];
+        return [];
       } catch {
         return [];
       }
@@ -139,10 +141,12 @@ export const useCompetitorScans = (competitorId?: string) => {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['scans', competitorId, user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<CrawlRun[]> => {
       try {
         const data = await fetchApi(`/crawls/${competitorId}`);
-        return data as CrawlRun[];
+        if (Array.isArray(data)) return data as CrawlRun[];
+        if (data && Array.isArray((data as any).crawls)) return (data as any).crawls as CrawlRun[];
+        return [];
       } catch {
         return [];
       }

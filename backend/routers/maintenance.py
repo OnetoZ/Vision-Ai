@@ -75,3 +75,4 @@ async def get_maintenance_findings(
             ])
 
     return {"findings": findings}
+

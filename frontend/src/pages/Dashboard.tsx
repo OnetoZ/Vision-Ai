@@ -21,7 +21,8 @@ const Dashboard = () => {
 
   const myCompany = competitors.find(c => c.competitor_type === 'self');
   const mySEO = advisorData?.find(c => c.id === myCompany?.id);
-  const highPriorityGaps = (seoGaps || []).filter((g: SEOGap) => g.severity === 'high').length;
+  const rawGaps: SEOGap[] = Array.isArray(seoGaps) ? seoGaps : ((seoGaps as any)?.gaps || []);
+  const highPriorityGaps = rawGaps.filter((g: SEOGap) => g?.severity === 'high').length;
 
   const handleRefresh = async () => {
     await Promise.all([
