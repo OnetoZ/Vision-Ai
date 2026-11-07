@@ -1,10 +1,12 @@
 {
   "name": "vision-ai-workspace",
   "private": true,
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
+    "build": "cd frontend && npm install && npm run build",
     "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
     "start": "./start_all.sh"
   }
 }
-
