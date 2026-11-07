@@ -24,3 +24,4 @@ export function getHealthLabel(score: number): string {
   if (score >= 60) return 'Moderate';
   return 'At Risk';
 }
+

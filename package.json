@@ -8,5 +8,9 @@
     "build": "cd frontend && npm run build",
     "dev": "npm --prefix frontend run dev",
     "start": "./start_all.sh"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.67.2",
+    "@rollup/rollup-linux-x64-musl": "4.67.2"
   }
 }
